@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detalle de Respuesta</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --card: #ffffff;
+        --primary: #0f766e;
+        --primary-hover: #115e59;
+        --text: #0f172a;
+        --muted: #475569;
+        --line: #e2e8f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(180deg, #e2f4f1 0%, var(--bg) 45%, #eef2ff 100%);
+        color: var(--text);
+      }
+
+      .container {
+        width: min(96vw, 980px);
+        margin: 28px auto;
+      }
+
+      .card {
+        background: var(--card);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.55rem;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .btn {
+        display: inline-block;
+        text-decoration: none;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 700;
+        color: #fff;
+        background: var(--primary);
+      }
+
+      .btn:hover {
+        background: var(--primary-hover);
+      }
+
+      .btn-secondary {
+        background: #334155;
+      }
+
+      .btn-secondary:hover {
+        background: #1e293b;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 0.93rem;
+      }
+
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .table-resumen {
+        min-width: 420px;
+      }
+
+      .table-detalle {
+        min-width: 860px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        padding: 8px;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f8fafc;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      code {
+        background: #f1f5f9;
+        border-radius: 4px;
+        padding: 1px 4px;
+      }
+
+      .num {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .nowrap {
+        white-space: nowrap;
+      }
+
+      h2 {
+        margin: 0 0 10px;
+        font-size: 1.15rem;
+      }
+
+      .meta-line {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 0.95rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Detalle de respuesta (1 fila)</h1>
+        <p>
+          Se detectó un archivo con una sola fila útil. Aquí tienes el resultado
+          resumido y su desglose mensual.
+        </p>
+        <div class="actions">
+          <a class="btn" href="/descargar/{{ token_descarga }}">Descargar Excel procesado</a>
+          <a class="btn btn-secondary" href="/">Procesar otro archivo</a>
+        </div>
+      </section>
+
+      {% if meta_anio %}
+        <section class="card">
+          <h2>Año del archivo</h2>
+          <p class="meta-line">
+            <strong>{{ meta_anio.modo_etiqueta }}</strong>
+            {% if meta_anio.modo_codigo == "en_curso" %}
+              — Año de referencia usado en cálculos: <strong>{{ meta_anio.anio_referencia }}</strong>
+            {% else %}
+              — Año de referencia (mayor año entre <code>fecha_inicio</code> y <code>fecha_fin</code> del archivo):
+              <strong>{{ meta_anio.anio_referencia }}</strong>
+            {% endif %}
+          </p>
+        </section>
+      {% endif %}
+
+      <section class="card">
+        <h2>Resumen</h2>
+        <div class="table-wrap">
+          <table class="table-resumen">
+            <thead>
+              <tr>
+                <th>Campo</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for campo, valor in detalle.resumen.items() %}
+                <tr>
+                  <td><code>{{ campo }}</code></td>
+                  <td>{{ valor }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Detalle mensual</h2>
+        <div class="table-wrap">
+          <table class="table-detalle">
+            <thead>
+              <tr>
+                <th class="nowrap">Mes</th>
+                <th class="nowrap">Periodo inicio</th>
+                <th class="nowrap">Periodo fin</th>
+                <th class="nowrap">Días hábiles</th>
+                <th class="nowrap">Remuneración</th>
+                <th class="nowrap">Valor día</th>
+                <th class="nowrap">Monto mes</th>
+                <th class="nowrap">RUT</th>
+                <th class="nowrap">Área</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if detalle.detalle_mensual %}
+                {% for item in detalle.detalle_mensual %}
+                  <tr>
+                    <td class="nowrap">{{ item.mes }}</td>
+                    <td class="nowrap">{{ item.periodo_inicio }}</td>
+                    <td class="nowrap">{{ item.periodo_fin }}</td>
+                    <td class="num">{{ item.dias_habiles }}</td>
+                    <td class="num">{{ item.remuneracion }}</td>
+                    <td class="num">{{ item.valor_dia }}</td>
+                    <td class="num">{{ item.monto_mes }}</td>
+                    <td class="num">{{ item.rut }}</td>
+                    <td class="nowrap">{{ item.area }}</td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="9">No se encontraron tramos en la hoja <code>detalle_mensual</code>.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

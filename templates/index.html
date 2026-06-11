@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Procesador de Archivos</title>
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <title>Monto Devolución por Licencia</title>
     <style>
       :root {
         --bg: #f5f7fb;
@@ -63,9 +64,15 @@
         font-weight: 600;
       }
 
-      input[type="file"] {
+      input[type="file"],
+      select {
         width: 100%;
         margin-bottom: 18px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+        font-size: 0.95rem;
       }
 
       button {
@@ -101,8 +108,11 @@
   </head>
   <body>
     <main class="card">
-      <h1>Subir y modificar archivo</h1>
-      <p>Carga un XML y descarga automaticamente la version procesada por tu script.</p>
+      <h1>Cálculo de Monto Devolución</h1>
+      <p>
+        Sube un Excel, indica el año del archivo, elige el área global y descarga el mismo archivo con
+        <code>monto_devolucion</code> y la hoja <code>detalle_mensual</code>.
+      </p>
 
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -113,19 +123,50 @@
       {% endwith %}
 
       <form action="/procesar" method="post" enctype="multipart/form-data">
-        <label for="archivo">Archivo Excel o XML</label>
-        <input id="archivo" name="archivo" type="file" accept=".xml" required />
+        <label for="anio_archivo">Año del archivo</label>
+        <select id="anio_archivo" name="anio_archivo" required>
+          <option value="" selected disabled>Selecciona una opción</option>
+          <option value="en_curso">Año en curso</option>
+          <option value="anteriores">Años anteriores</option>
+        </select>
+
+        <label for="area">Área</label>
+        <select id="area" name="area" required>
+          <option value="" selected disabled>Selecciona un área</option>
+          <option value="Municipal">Municipal</option>
+          <option value="Salud">Salud</option>
+          <option value="Educación">Educación</option>
+        </select>
+
+        <label for="archivo">Archivo Excel</label>
+        <input
+          id="archivo"
+          name="archivo"
+          type="file"
+          accept=".xlsx,.xlsm,.xltx,.xltm"
+          required
+        />
         <button type="submit" id="btn-submit" disabled>Procesar y descargar</button>
       </form>
-
+      <p class="hint">
+        El archivo debe incluir exactamente las columnas:
+        <code>rut</code>, <code>fecha_inicio</code> y <code>fecha_fin</code>.
+      </p>
     </main>
     <script>
       (function () {
         var input = document.getElementById('archivo');
+        var area = document.getElementById('area');
+        var anioArchivo = document.getElementById('anio_archivo');
         var btn = document.getElementById('btn-submit');
         function updateButton() {
-          btn.disabled = !input.files || input.files.length === 0;
+          var hasFile = input.files && input.files.length > 0;
+          var hasArea = area.value !== '';
+          var hasAnio = anioArchivo.value !== '';
+          btn.disabled = !(hasFile && hasArea && hasAnio);
         }
+        area.addEventListener('change', updateButton);
+        anioArchivo.addEventListener('change', updateButton);
         input.addEventListener('change', updateButton);
       })();
     </script>
