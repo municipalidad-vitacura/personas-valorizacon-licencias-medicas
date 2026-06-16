@@ -104,6 +104,65 @@
         font-size: 0.85rem;
         color: var(--muted);
       }
+
+      .date-hint {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: #f0fdf9;
+        border: 1px solid #99f6e4;
+        font-size: 0.85rem;
+        color: #134e4a;
+      }
+
+      .date-hint strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.87rem;
+      }
+
+      .date-hint ul {
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.8;
+      }
+
+      .date-hint code {
+        background: #ccfbf1;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 0.83rem;
+      }
+
+      .api-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 14px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .api-badge.ok {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .api-badge.warn {
+        background: #fef9c3;
+        color: #854d0e;
+      }
+
+      .api-badge .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .api-badge.ok .dot  { background: #16a34a; }
+      .api-badge.warn .dot { background: #ca8a04; }
     </style>
   </head>
   <body>
@@ -152,6 +211,28 @@
         El archivo debe incluir exactamente las columnas:
         <code>rut</code>, <code>fecha_inicio</code> y <code>fecha_fin</code>.
       </p>
+      {% if api_debug %}
+        <div class="api-badge warn">
+          <span class="dot"></span>
+          API: debug=True — llamadas pueden fallar (subproceso reloader activo)
+        </div>
+      {% else %}
+        <div class="api-badge ok">
+          <span class="dot"></span>
+          API: debug=False — llamadas habilitadas correctamente
+        </div>
+      {% endif %}
+
+      <div class="date-hint">
+        <strong>Formatos de fecha aceptados</strong>
+        <ul>
+          <li><code>29/01/2026</code> — DD/MM/AAAA</li>
+          <li><code>29/01/26</code> — DD/MM/AA</li>
+          <li><code>29-01-2026</code> — DD-MM-AAAA</li>
+          <li><code>29-01-26</code> — DD-MM-AA</li>
+          <li><code>2026-01-29</code> — AAAA-MM-DD</li>
+        </ul>
+      </div>
     </main>
     <script>
       (function () {

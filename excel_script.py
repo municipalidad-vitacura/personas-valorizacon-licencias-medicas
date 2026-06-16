@@ -49,6 +49,49 @@ MESES_ES = {
 }
 
 FERIADOS = [
+    # 2021
+    "2021-01-01",
+    "2021-04-02",
+    "2021-04-03",
+    "2021-05-01",
+    "2021-05-15",
+    "2021-05-16",
+    "2021-05-21",
+    "2021-06-13",
+    "2021-06-21",
+    "2021-06-28",
+    "2021-07-16",
+    "2021-07-18",
+    "2021-08-15",
+    "2021-09-17",
+    "2021-09-18",
+    "2021-09-19",
+    "2021-10-11",
+    "2021-10-31",
+    "2021-11-01",
+    "2021-11-21",
+    "2021-12-08",
+    "2021-12-19",
+    "2021-12-25",
+    # 2022
+    "2022-01-01",
+    "2022-04-15",
+    "2022-04-16",
+    "2022-05-01",
+    "2022-05-21",
+    "2022-06-21",
+    "2022-06-27",
+    "2022-07-16",
+    "2022-08-15",
+    "2022-09-04",
+    "2022-09-16",
+    "2022-09-18",
+    "2022-09-19",
+    "2022-10-10",
+    "2022-10-31",
+    "2022-11-01",
+    "2022-12-08",
+    "2022-12-25",
     "2023-01-01",
     "2023-01-02",
     "2023-04-07",
@@ -186,7 +229,6 @@ class RRHHClient:
             "liquidaciones_procesos.ashx",
             {"rut": rut, "anio": anio, "mes": mes, "dominio_id": self.dominio_id},
         )
-        print(payload)
         procesos = normalizar_lista_dicts(payload)
         proceso_id: int | None = None
         for proceso in procesos:
@@ -621,10 +663,19 @@ def parsear_fecha(valor: Any) -> date:
         limpio = valor.strip()
         if not limpio:
             raise ValueError("Fecha vacía.")
-        try:
-            return datetime.strptime(limpio, "%d-%m-%y").date()
-        except ValueError as exc:
-            raise ValueError("Formato de fecha inválido, usa dd-mm-yy.") from exc
+        formatos = (
+            "%d-%m-%y",
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%d/%m/%y",
+            "%Y-%m-%d",
+        )
+        for fmt in formatos:
+            try:
+                return datetime.strptime(limpio, fmt).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Formato de fecha no reconocido: '{limpio}'. Usa dd-mm-yy, dd-mm-yyyy o dd/mm/yyyy.")
     raise ValueError("Tipo de dato de fecha no soportado.")
 
 

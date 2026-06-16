@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import os
+import threading
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from flask import Flask, flash, make_response, redirect, render_template, request, send_file
+from flask import Flask, flash, jsonify, make_response, redirect, render_template, request, send_file
 from openpyxl import load_workbook
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
@@ -41,6 +42,9 @@ ENCABEZADOS_DETALLE = (
     "valor_dia",
     "monto_mes",
 )
+
+# job_id -> {"status": "pending"|"done"|"error", "result": ..., "error": str}
+JOBS: dict[str, dict[str, Any]] = {}
 SALIDAS_PROCESADAS: dict[str, dict[str, Any]] = {}
 
 app = Flask(__name__)
@@ -144,9 +148,43 @@ def construir_detalle_respuesta(contenido_excel: bytes) -> dict[str, Any] | None
     }
 
 
+def _worker(job_id: str, contenido: bytes, extension: str, area: str, modo_anio_archivo: str, nombre_salida: str) -> None:
+    try:
+        salida_io, meta_anio = modificar_archivo(
+            contenido,
+            extension,
+            area,
+            modo_anio_archivo=modo_anio_archivo,
+        )
+        salida_bytes = salida_io.getvalue()
+        detalle = construir_detalle_respuesta(salida_bytes)
+        meta_anio_vista = {
+            "modo_codigo": meta_anio["modo_anio_archivo"],
+            "modo_etiqueta": ETIQUETA_ANIO_ARCHIVO[meta_anio["modo_anio_archivo"]],
+            "anio_referencia": meta_anio["anio_referencia"],
+        }
+
+        token_descarga = str(uuid4())
+        SALIDAS_PROCESADAS[token_descarga] = {
+            "contenido": salida_bytes,
+            "nombre": nombre_salida,
+            "mimetype": MIME_BY_EXTENSION[extension],
+        }
+
+        JOBS[job_id] = {
+            "status": "done",
+            "token_descarga": token_descarga,
+            "detalle": detalle,
+            "meta_anio": meta_anio_vista,
+            "nombre_salida": nombre_salida,
+        }
+    except Exception as exc:  # noqa: BLE001
+        JOBS[job_id] = {"status": "error", "error": str(exc)}
+
+
 @app.get("/")
 def index():
-    response = make_response(render_template("index.html"))
+    response = make_response(render_template("index.html", api_debug=app.debug))
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     return response
@@ -188,47 +226,53 @@ def procesar_excel():
         flash("El archivo está vacío.")
         return redirect("/")
 
-    try:
-        salida_io, meta_anio = modificar_archivo(
-            contenido,
-            extension,
-            area,
-            modo_anio_archivo=modo_anio_archivo,
-        )
-    except ValueError as exc:
-        flash(str(exc))
-        return redirect("/")
-
     base = Path(nombre_seguro).stem
     nombre_salida = f"{base}_modificado{extension}"
-    salida_bytes = salida_io.getvalue()
-    detalle = construir_detalle_respuesta(salida_bytes)
-    meta_anio_vista = {
-        "modo_codigo": meta_anio["modo_anio_archivo"],
-        "modo_etiqueta": ETIQUETA_ANIO_ARCHIVO[meta_anio["modo_anio_archivo"]],
-        "anio_referencia": meta_anio["anio_referencia"],
-    }
+    job_id = str(uuid4())
+    JOBS[job_id] = {"status": "pending"}
 
-    if detalle is not None:
-        token_descarga = str(uuid4())
-        SALIDAS_PROCESADAS[token_descarga] = {
-            "contenido": salida_bytes,
-            "nombre": nombre_salida,
-            "mimetype": MIME_BY_EXTENSION[extension],
-        }
+    hilo = threading.Thread(
+        target=_worker,
+        args=(job_id, contenido, extension, area, modo_anio_archivo, nombre_salida),
+        daemon=True,
+    )
+    hilo.start()
+
+    return render_template("progreso.html", job_id=job_id, nombre_archivo=nombre_seguro)
+
+
+@app.get("/estado/<job_id>")
+def estado_job(job_id: str):
+    job = JOBS.get(job_id)
+    if job is None:
+        return jsonify({"status": "not_found"}), 404
+    if job["status"] == "pending":
+        return jsonify({"status": "pending"})
+    if job["status"] == "error":
+        return jsonify({"status": "error", "error": job["error"]})
+    return jsonify({
+        "status": "done",
+        "token_descarga": job["token_descarga"],
+        "tiene_detalle": job["detalle"] is not None,
+    })
+
+
+@app.get("/resultado/<job_id>")
+def resultado_job(job_id: str):
+    job = JOBS.pop(job_id, None)
+    if job is None or job["status"] != "done":
+        flash("El trabajo no existe o aún no está listo.")
+        return redirect("/")
+
+    if job["detalle"] is not None:
         return render_template(
             "detalle.html",
-            detalle=detalle,
-            token_descarga=token_descarga,
-            meta_anio=meta_anio_vista,
+            detalle=job["detalle"],
+            token_descarga=job["token_descarga"],
+            meta_anio=job["meta_anio"],
         )
 
-    return send_file(
-        BytesIO(salida_bytes),
-        as_attachment=True,
-        download_name=nombre_salida,
-        mimetype=MIME_BY_EXTENSION[extension],
-    )
+    return redirect(f"/descargar/{job['token_descarga']}")
 
 
 @app.get("/descargar/<token>")
